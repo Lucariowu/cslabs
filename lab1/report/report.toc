@@ -1,0 +1,27 @@
+\babel@toc {UKenglish}{}\relax 
+\contentsline {section}{\numberline {1}Introduction and Objectives}{2}{section.1}%
+\contentsline {section}{\numberline {2}Short Theory}{2}{section.2}%
+\contentsline {subsection}{\numberline {2.1}The Classical Caesar Cipher}{2}{subsection.2.1}%
+\contentsline {subsubsection}{\numberline {2.1.1}Encryption and Decryption Formulas}{2}{subsubsection.2.1.1}%
+\contentsline {subsubsection}{\numberline {2.1.2}Key Space and Security Vulnerabilities}{3}{subsubsection.2.1.2}%
+\contentsline {subsection}{\numberline {2.2}The Caesar Cipher with a Permutation (Two Keys)}{3}{subsection.2.2}%
+\contentsline {subsubsection}{\numberline {2.2.1}Permuted Alphabet Construction}{3}{subsubsection.2.2.1}%
+\contentsline {subsubsection}{\numberline {2.2.2}Encryption and Decryption over the Permuted Domain}{3}{subsubsection.2.2.2}%
+\contentsline {subsubsection}{\numberline {2.2.3}Key Space Analysis and Cryptanalytic Resilience}{3}{subsubsection.2.2.3}%
+\contentsline {section}{\numberline {3}Implementation Details}{4}{section.3}%
+\contentsline {subsection}{\numberline {3.1}Architecture and Romanian Alphabet Representation}{4}{subsection.3.1}%
+\contentsline {subsection}{\numberline {3.2}Code Fragments and Explanations}{4}{subsection.3.2}%
+\contentsline {subsubsection}{\numberline {3.2.1}Alphabet Definition and Explicit Mapping}{4}{subsubsection.3.2.1}%
+\contentsline {subsubsection}{\numberline {3.2.2}Diacritic Normalization and Cedilla Compatibility}{5}{subsubsection.3.2.2}%
+\contentsline {subsubsection}{\numberline {3.2.3}Strict Input Validation and Error Reporting}{5}{subsubsection.3.2.3}%
+\contentsline {subsubsection}{\numberline {3.2.4}Building the Permuted Alphabet}{6}{subsubsection.3.2.4}%
+\contentsline {subsubsection}{\numberline {3.2.5}Encryption and Decryption Algorithms}{6}{subsubsection.3.2.5}%
+\contentsline {section}{\numberline {4}Results and Demonstration}{7}{section.4}%
+\contentsline {subsection}{\numberline {4.1}Task 1.1: Single-Key Caesar Cipher Execution}{7}{subsection.4.1}%
+\contentsline {subsubsection}{\numberline {4.1.1}Operational Verification and Hand Calculation}{7}{subsubsection.4.1.1}%
+\contentsline {subsection}{\numberline {4.2}Task 1.1: Error Handling and Input Validation}{8}{subsection.4.2}%
+\contentsline {subsection}{\numberline {4.3}Task 1.2: Two-Key Caesar Cipher with Permutation}{9}{subsection.4.3}%
+\contentsline {subsubsection}{\numberline {4.3.1}Permuted Alphabet Generation and Hand-Check Verification}{9}{subsubsection.4.3.1}%
+\contentsline {subsection}{\numberline {4.4}Task 1.2: Error Handling for Keyword and Shift Keys}{10}{subsection.4.4}%
+\contentsline {section}{\numberline {5}Conclusions}{12}{section.5}%
+\contentsline {section}{\numberline {6}Source Code Repository}{12}{section.6}%
