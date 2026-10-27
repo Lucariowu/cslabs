@@ -1,0 +1,533 @@
+\documentclass{labreport}
+
+\usepackage{microtype}
+\usepackage{enumitem}
+\usepackage{pifont}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{float}
+\usepackage{combelow}
+\usepackage{url}
+
+% Adjust headheight for fancyhdr
+\setlength{\headheight}{16pt}
+\addtolength{\topmargin}{-1pt}
+
+% Colors matching lab1 style
+\definecolor{codebg}{RGB}{248, 249, 251}
+\definecolor{codeborder}{RGB}{218, 222, 229}
+\definecolor{linkcolor}{RGB}{20, 60, 120}
+
+% Hyperref setup with subtle link colors
+\hypersetup{
+    colorlinks=true,
+    linkcolor=linkcolor,
+    filecolor=linkcolor,
+    urlcolor=linkcolor,
+    citecolor=linkcolor
+}
+
+% Code and terminal listings
+\lstdefinestyle{bash}{
+    basicstyle=\ttfamily\footnotesize,
+    backgroundcolor=\color{codebg},
+    frame=single,
+    framerule=0.5pt,
+    rulecolor=\color{codeborder},
+    breaklines=true,
+    breakatwhitespace=false,
+    showstringspaces=false,
+    keepspaces=true,
+    columns=flexible,
+    numbers=none,
+    xleftmargin=3pt,
+    xrightmargin=3pt,
+    framesep=4pt
+}
+
+\lstdefinestyle{python}{
+    language=Python,
+    basicstyle=\ttfamily\footnotesize,
+    backgroundcolor=\color{codebg},
+    frame=single,
+    framerule=0.5pt,
+    rulecolor=\color{codeborder},
+    keywordstyle=\color{blue!85!black}\bfseries,
+    commentstyle=\color{gray!80!black}\itshape,
+    stringstyle=\color{teal!80!black},
+    numbers=left,
+    numberstyle=\tiny\color{gray!80!black},
+    numbersep=8pt,
+    breaklines=true,
+    breakatwhitespace=false,
+    showstringspaces=false,
+    keepspaces=true,
+    columns=flexible,
+    tabsize=4,
+    xleftmargin=14pt,
+    xrightmargin=3pt,
+    framesep=4pt
+}
+
+% Literate mappings for Romanian diacritics and accents in listings
+\lstset{
+    extendedchars=true,
+    literate=
+        {Ă}{{\v{A}}}{1}
+        {ă}{{\v{a}}}{1}
+        {Â}{{\^A}}{1}
+        {â}{{\^a}}{1}
+        {Î}{{\^I}}{1}
+        {î}{{\^i}}{1}
+        {Ș}{{\cb{S}}}{1}
+        {ș}{{\cb{s}}}{1}
+        {Ț}{{\cb{T}}}{1}
+        {ț}{{\cb{t}}}{1}
+        {Ş}{{\cb{S}}}{1}
+        {ş}{{\cb{s}}}{1}
+        {Ţ}{{\cb{T}}}{1}
+        {ţ}{{\cb{t}}}{1}
+        {È}{{\`E}}{1}
+        {è}{{\`e}}{1}
+        {É}{{\'E}}{1}
+        {é}{{\'e}}{1}
+}
+
+% Section styling matching lab1
+\titleformat{\section}
+  {\large\bfseries}{\thesection}{0.8em}{}[\vspace{1pt}\hrule height 0.5pt]
+\titleformat{\subsection}
+  {\normalsize\bfseries}{\thesubsection}{0.8em}{}
+\titleformat{\subsubsection}
+  {\small\bfseries}{\thesubsubsection}{0.8em}{}
+
+\begin{document}
+
+\hypersetup{pageanchor=false}
+\labtitle
+    {3}
+    {Polyalphabetic Ciphers: The Vigenère Cipher}
+    {st. gr. FAF-243}
+    {Șoimu Ionuț}
+    {asist. univ.\\[0.15cm] Zaica Maia}
+
+\tableofcontents
+\newpage
+\hypersetup{pageanchor=true}
+\setcounter{page}{1}
+
+% ==============================================================================
+\section{Introduction and Objectives}
+
+Classical cryptography provides foundational mechanisms for confidential communications. In previous laboratory assignments, monoalphabetic substitution systems were studied and evaluated: the classical Caesar cipher and the keyword-permuted Caesar cipher (Laboratory 1), followed by the cryptanalysis of monoalphabetic ciphers via statistical frequency analysis (Laboratory 2). Because monoalphabetic ciphers apply a fixed, stationary mapping from plaintext characters to ciphertext characters, the natural unigram, bigram, and trigram frequencies of the source language remain completely preserved in the ciphertext, allowing an adversary to decipher intercepted traffic without possessing the secret key.
+
+To overcome this structural vulnerability, classical cryptographic theory developed \textbf{polyalphabetic substitution ciphers}. The defining characteristic of a polyalphabetic system is the systematic alternation among multiple distinct substitution alphabets throughout the message. Consequently, a high-frequency plaintext letter (such as \texttt{E} or \texttt{A}) is mapped to different ciphertext symbols at different positions, while identical ciphertext symbols can originate from distinct plaintext letters. This alternating substitution flattens the frequency distribution of the ciphertext and conceals the underlying linguistic statistics.
+
+In accordance with the guidelines for Laboratory Work No.~3 (\textit{Lucrare de laborator nr. 3. Cifruri polialfabetice}), students with even catalog numbers are assigned \textbf{Task 3.2: The Vigenère Cipher for the Romanian Alphabet}.
+
+The primary objectives of this laboratory work are:
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Understand the theoretical foundations} and mathematical mechanics of polyalphabetic substitution, specifically how rotating through multiple Caesar shifts flattens language frequency distributions.
+    \item \textbf{Adapt the Vigenère cipher to the 31-letter Romanian alphabet}, establishing an exact bijective mapping onto the commutative ring $\mathbb{Z}_{31} = \{0, 1, \dots, 30\}$ without relying on language-dependent ASCII or Unicode codepoint shifts.
+    \item \textbf{Implement standard Romanian diacritic handling}, correctly supporting standard comma-below letters (\texttt{Ș}, \texttt{Ț} -- Unicode \texttt{U+0218}, \texttt{U+021A}) while automatically normalizing legacy cedilla characters (\texttt{Ş}, \texttt{Ţ} -- Unicode \texttt{U+015E}, \texttt{U+0162}).
+    \item \textbf{Enforce strict input preprocessing and validation} as mandated by Task 3.2: spaces must first be stripped from the plaintext message prior to uppercase transformation, non-alphabet characters (digits, punctuation, foreign symbols) must be detected and rejected with an explicit diagnostic indicating the allowed range, and keys must satisfy the minimum length threshold $|K| \ge 7$.
+    \item \textbf{Implement algebraic encryption and decryption} using modular arithmetic in $\mathbb{Z}_{31}$, taking advantage of floored division to guarantee non-negative residues.
+    \item \textbf{Generate step-by-step mathematical calculation tables} formatted across 6 rows, reproducing the exact structure demonstrated in Section 3.1 of the laboratory manual.
+    \item \textbf{Construct a clean, modular CLI and interactive menu system} consistent with the layout and design conventions established in Laboratory 1.
+\end{enumerate}
+
+% ==============================================================================
+\section{Short Theory}
+
+\subsection{Principles of Polyalphabetic Substitution}
+
+The fundamental weakness of any monoalphabetic substitution cipher is that its output frequency histogram reflects the probability distribution of the source language. A cipher is cryptographically stronger when its output distribution is uniform, offering no statistical bias to a cryptanalyst.
+
+Polyalphabetic ciphers flatten this distribution by combining high-frequency letters with low-frequency letters. If a common letter (e.g., \texttt{T}) is encrypted sometimes as \texttt{A} and other times as \texttt{B}, and if a rare letter (e.g., \texttt{X}) is also encrypted sometimes as \texttt{A} and other times as \texttt{B}, the high probability of \texttt{T} merges with the low probability of \texttt{X}, yielding an intermediate, balanced frequency for both \texttt{A} and \texttt{B}. This alternation is achieved by employing multiple substitution alphabets in cyclic succession. The earliest known polyalphabetic system was described by Leon Battista Alberti in 1568, using a mechanical cipher disk.
+
+\subsection{The Vigenère Cipher}
+
+The Vigenère cipher was historically misattributed in the 19th century to Blaise de Vigenère; it was actually first published by the Italian cryptologist Giovan Battista Bellaso in his 1553 treatise \textit{La cifra del. Sig. Giovan Battista Bellaso}.
+
+The cipher operates as a sequence of Caesar shifts, where the shift value is not constant but varies cyclically according to a secret key string $K = (k_0, k_1, \dots, k_{L-1})$. Each character of the key determines a specific additive shift in the range $0 \le k_j < n$, where $n$ is the alphabet cardinality. The key is repeated periodically across the length of the message:
+\begin{equation}
+    k'_i = k_{i \bmod L}, \quad \text{for } i = 0, 1, \dots, N-1.
+\end{equation}
+
+\subsection[Mathematical Model over the Romanian Alphabet (n = 31)]{Mathematical Model over the Romanian Alphabet ($n = 31$)}
+
+Let $\Sigma$ represent the canonical Romanian alphabet of $n = 31$ uppercase letters:
+\begin{equation}
+    \Sigma = (\text{A}, \text{Ă}, \text{Â}, \text{B}, \text{C}, \text{D}, \text{E}, \text{F}, \text{G}, \text{H}, \text{I}, \text{Î}, \text{J}, \text{K}, \text{L}, \text{M}, \text{N}, \text{O}, \text{P}, \text{Q}, \text{R}, \text{S}, \text{Ș}, \text{T}, \text{Ț}, \text{U}, \text{V}, \text{W}, \text{X}, \text{Y}, \text{Z}).
+\end{equation}
+
+Table~\ref{tab:romanian_alphabet} defines the bijective encoding $\text{enc}: \Sigma \to \mathbb{Z}_{31}$ assigning each letter an integer index $x \in \{0, 1, \dots, 30\}$.
+
+\begin{table}[H]
+\centering
+\small
+\setlength{\tabcolsep}{4pt}
+\caption{Canonical Romanian Alphabet Letter Encoding ($n = 31$, Table 2)}
+\label{tab:romanian_alphabet}
+\begin{tabular}{@{}l*{16}{c}@{}}
+\toprule
+\textbf{Letter} & A & Ă & Â & B & C & D & E & F & G & H & I & Î & J & K & L & M \\
+\textbf{Code}   & 0 & 1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 & 9 & 10 & 11 & 12 & 13 & 14 & 15 \\
+\midrule
+\textbf{Letter} & N & O & P & Q & R & S & Ș & T & Ț & U & V & W & X & Y & Z & -- \\
+\textbf{Code}   & 16 & 17 & 18 & 19 & 20 & 21 & 22 & 23 & 24 & 25 & 26 & 27 & 28 & 29 & 30 & -- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Let the preprocessed plaintext message be $M = (m_0, m_1, \dots, m_{N-1})$, where each $m_i \in \mathbb{Z}_{31}$, and let the secret key be $K = (k_0, k_1, \dots, k_{L-1})$, where $k_j \in \mathbb{Z}_{31}$ and $L = |K| \ge 7$.
+
+\subsubsection{Encryption Formula}
+Each ciphertext character $c_i$ is computed through modular addition:
+\begin{equation}
+    c_i = (m_i + k'_i) \pmod{31}.
+\end{equation}
+
+\subsubsection{Decryption Formula}
+Decryption is the exact inverse operation under modular arithmetic, subtracting the periodic key index:
+\begin{equation}
+    m_i = (c_i - k'_i) \pmod{31}.
+\end{equation}
+When the difference $(c_i - k'_i)$ is negative, the value wraps around into the non-negative residue domain $[0, 30]$:
+\begin{equation}
+    (c_i - k'_i) \pmod{31} \equiv ((c_i - k'_i) \bmod 31 + 31) \bmod 31.
+\end{equation}
+In Python, the modulo operator \texttt{\%} implements floored division, which automatically produces a non-negative residue within $[0, 30]$ for any positive modulus.
+
+\subsection{The Tabula Recta}
+
+The Tabula Recta is a $31 \times 31$ square matrix wherein each row represents a cyclic left shift of the Romanian alphabet by one position. The row index corresponds to the key letter $k'_i$, the column index corresponds to the plaintext letter $m_i$, and their intersection yields the ciphertext letter $c_i$. The Tabula Recta provides a visual, geometric representation that is isomorphic to modular addition in $\mathbb{Z}_{31}$.
+
+% ==============================================================================
+\section{Implementation Details}
+
+\subsection{Architecture and Romanian Alphabet Representation}
+
+The implementation was constructed in Python with a clean, modular architecture separated into distinct components within \texttt{lab3/}:
+\begin{itemize}[noitemsep, topsep=2pt]
+    \item \texttt{romanian\_alphabet.py}: Canonical definition of the 31-letter Romanian alphabet, bidirectional mapping dictionaries, diacritic normalizers, text preprocessing routines, and key/message validators.
+    \item \texttt{vigenere\_cipher.py}: Task 3.2 core encryption and decryption algorithms, step-by-step mathematical matrix formatting, and interactive sub-menu routines.
+    \item \texttt{main.py}: Top-level CLI entry point supporting interactive menu navigation, Task 3.2 execution, and command-line argument parsing.
+\end{itemize}
+
+\subsection{Code Fragments and Explanations}
+
+\subsubsection{Alphabet Definition and Explicit Mapping}
+The assignment strictly requires that built-in ASCII/Unicode codepoint arithmetic must not be used to compute cipher shifts. Instead, an explicit list and bidirectional dictionary mappings are established:
+
+\begin{lstlisting}[style=python]
+ROMANIAN_ALPHABET: List[str] = [
+    'A', 'Ă', 'Â', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I',
+    'Î', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S',
+    'Ș', 'T', 'Ț', 'U', 'V', 'W', 'X', 'Y', 'Z'
+]
+ALPHABET_SIZE: int = len(ROMANIAN_ALPHABET)  # 31
+
+CHAR_TO_INDEX: Dict[str, int] = {char: idx for idx, char in enumerate(ROMANIAN_ALPHABET)}
+INDEX_TO_CHAR: Dict[int, str] = {idx: char for idx, char in enumerate(ROMANIAN_ALPHABET)}
+\end{lstlisting}
+\textbf{Comment:} This defines the exact domain $\mathbb{Z}_{31}$. Mapping lookup is $O(1)$ and guarantees that letter substitutions strictly follow the canonical Table 2 indices rather than arbitrary ASCII/Unicode offsets.
+
+\subsubsection{Diacritic Normalization and Cedilla Compatibility}
+Romanian typography frequently encounters Turkish-style cedilla variants (\texttt{Ş}, \texttt{Ţ}) instead of standard Romanian comma-below letters (\texttt{Ș}, \texttt{Ț}). An explicit normalizer handles this transparently:
+
+\begin{lstlisting}[style=python]
+CEDILLA_MAPPING: Dict[str, str] = {
+    'Ş': 'Ș', 'ş': 'ș',
+    'Ţ': 'Ț', 'ţ': 'ț',
+}
+
+def normalize_character(c: str) -> str:
+    mapped = CEDILLA_MAPPING.get(c, c)
+    return mapped.upper()
+
+def normalize_text(text: str) -> str:
+    return "".join(normalize_character(c) for c in text)
+\end{lstlisting}
+\textbf{Comment:} All input characters are converted to standard comma-below representations and cast to uppercase before any membership validation or cryptographic transformation occurs.
+
+\subsubsection{Whitespace Stripping and Strict Character Validation}
+Task 3.2 specifies: \textit{"În mesaj mai întâi trebuie eliminate spațiile, apoi toate literele se vor transforma în majuscule. Valorile caracterelor textului sunt cuprinse între 'A' și 'Z', 'a' și 'z' și nu sunt permise alte valori. În cazul în care utilizatorul introduce alte valori -- i se va sugera diapazonul corect al caracterelor."}
+
+\begin{lstlisting}[style=python]
+def validate_text(raw_text: str) -> Tuple[bool, Optional[str], str]:
+    if not raw_text:
+        return False, "Error: Text input cannot be empty.", ""
+
+    # Task 3.2 requirement: spaces must be removed before uppercase transformation
+    without_spaces = "".join(raw_text.split())
+    if not without_spaces:
+        return False, "Error: Text cannot contain only spaces.", ""
+
+    normalized = normalize_text(without_spaces)
+    invalid_chars = sorted(list(set(c for c in normalized if c not in CHAR_TO_INDEX)))
+
+    if invalid_chars:
+        return (
+            False,
+            f"Error: Invalid character(s) detected: {', '.join(repr(c) for c in invalid_chars)}.\n"
+            f"Allowed characters: Only Romanian alphabet letters ('A'-'Z', 'a'-'z', including Ă, Â, Î, Ș, Ț).",
+            "",
+        )
+
+    return True, None, normalized
+\end{lstlisting}
+\textbf{Comment:} Following the exact specification sequence, spaces are stripped before conversion. Any rejected character (digits, punctuation, symbols) is extracted and reported alongside the explicit allowed character interval.
+
+\subsubsection[Key Validation and Length Enforcement (|K| >= 7)]{Key Validation and Length Enforcement ($|K| \ge 7$)}
+The laboratory specification dictates that the key length cannot be less than 7 and must consist exclusively of Romanian alphabet letters:
+
+\begin{lstlisting}[style=python]
+def validate_key(raw_key: str) -> Tuple[bool, Optional[str], str]:
+    if not raw_key:
+        return False, "Error: Key cannot be empty.", ""
+
+    without_spaces = "".join(raw_key.split())
+    normalized = normalize_text(without_spaces)
+
+    invalid_chars = sorted(list(set(c for c in normalized if c not in CHAR_TO_INDEX)))
+    if invalid_chars:
+        return (
+            False,
+            f"Error: Invalid character(s) in key: {', '.join(repr(c) for c in invalid_chars)}.\n"
+            f"Allowed characters: Only Romanian alphabet letters ('A'-'Z', 'a'-'z', including Ă, Â, Î, Ș, Ț).",
+            "",
+        )
+
+    if len(normalized) < 7:
+        return (
+            False,
+            f"Error: Key length must be at least 7 characters (got {len(normalized)}: '{normalized}').",
+            "",
+        )
+
+    return True, None, normalized
+\end{lstlisting}
+\textbf{Comment:} Spaces within the key string are removed, non-alphabet characters are rejected with diagnostics, and the strict $|K| \ge 7$ bound is enforced.
+
+\subsubsection{Vigenère Encryption and Decryption Core}
+The modular transformations map characters to numeric codes in $\mathbb{Z}_{31}$ and compute the shifted indices:
+
+\begin{lstlisting}[style=python]
+def encrypt_vigenere(plaintext: str, key: str) -> str:
+    """Encrypts plaintext using Vigenere cipher: ci = (mi + ki) mod 31."""
+    cipher_chars: List[str] = []
+    key_len = len(key)
+
+    for i, char in enumerate(plaintext):
+        m_i = CHAR_TO_INDEX[char]
+        k_i = CHAR_TO_INDEX[key[i % key_len]]
+        c_i = (m_i + k_i) % ALPHABET_SIZE
+        cipher_chars.append(INDEX_TO_CHAR[c_i])
+
+    return "".join(cipher_chars)
+
+def decrypt_vigenere(ciphertext: str, key: str) -> str:
+    """Decrypts ciphertext using Vigenere cipher: mi = (ci - ki) mod 31."""
+    plain_chars: List[str] = []
+    key_len = len(key)
+
+    for i, char in enumerate(ciphertext):
+        c_i = CHAR_TO_INDEX[char]
+        k_i = CHAR_TO_INDEX[key[i % key_len]]
+        # Python's modulo operator handles negative numbers correctly: (-k) % 31 -> [0..30]
+        m_i = (c_i - k_i) % ALPHABET_SIZE
+        plain_chars.append(INDEX_TO_CHAR[m_i])
+
+    return "".join(plain_chars)
+\end{lstlisting}
+\textbf{Comment:} Linear complexity $O(N)$ with respect to message length $N$. Floored modulo arithmetic in Python ensures that negative values $(c_i - k_i) < 0$ cleanly wrap into the valid interval $[0, 30]$.
+
+\subsubsection{Step-by-Step Mathematical Calculation Table}
+To provide full insight into intermediate values, \texttt{format\_vigenere\_table} produces the exact 6-row matrix format demonstrated in Section 3.1 of the laboratory guide:
+
+\begin{lstlisting}[style=python]
+def format_vigenere_table(text: str, key: str, is_encrypt: bool = True) -> str:
+    """Formats calculation table matching the mathematical model shown in the lab guide."""
+    key_len = len(key)
+    repeated_key = [key[i % key_len] for i in range(len(text))]
+
+    text_indices = [CHAR_TO_INDEX[c] for c in text]
+    key_indices = [CHAR_TO_INDEX[k] for k in repeated_key]
+
+    if is_encrypt:
+        mod_indices = [(t + k) % ALPHABET_SIZE for t, k in zip(text_indices, key_indices)]
+        result_chars = [INDEX_TO_CHAR[idx] for idx in mod_indices]
+        lbl_text, lbl_key, lbl_op, lbl_res = "Plaintext M", "Key K", "M + K (mod 31)", "Ciphertext C"
+    else:
+        mod_indices = [(t - k) % ALPHABET_SIZE for t, k in zip(text_indices, key_indices)]
+        result_chars = [INDEX_TO_CHAR[idx] for idx in mod_indices]
+        lbl_text, lbl_key, lbl_op, lbl_res = "Ciphertext C", "Key K", "C - K (mod 31)", "Plaintext M"
+
+    col_widths = [max(len(str(t)), len(str(k)), len(str(m)), len(str(rc)), 2)
+                  for t, k, m, rc in zip(text, repeated_key, mod_indices, result_chars)]
+
+    lines = [
+        f"{lbl_text:<16}: " + " ".join(f"{c:>{w}}" for c, w in zip(text, col_widths)),
+        f"{lbl_key:<16}: " + " ".join(f"{c:>{w}}" for c, w in zip(repeated_key, col_widths)),
+        f"{lbl_text:<16}: " + " ".join(f"{idx:>{w}}" for idx, w in zip(text_indices, col_widths)),
+        f"{lbl_key:<16}: " + " ".join(f"{idx:>{w}}" for idx, w in zip(key_indices, col_widths)),
+        f"{lbl_op:<16}: " + " ".join(f"{idx:>{w}}" for idx, w in zip(mod_indices, col_widths)),
+        f"{lbl_res:<16}: " + " ".join(f"{c:>{w}}" for c, w in zip(result_chars, col_widths)),
+    ]
+    return "\n".join(lines)
+\end{lstlisting}
+\textbf{Comment:} The function handles both encryption ($M+K$) and decryption ($C-K$), producing an aligned fixed-width textual matrix that matches the mathematical example in the lab manual.
+
+% ==============================================================================
+\section{Results and Demonstration}
+
+\subsection{Task 3.2: Operational Verification and Step-by-Step Calculation}
+
+Consider encrypting the Romanian test phrase containing multiple words and diacritic letters:
+\begin{center}
+    \texttt{"CRIPTOGRAFIA ESTE O ȘTIINȚĂ FUNDAMENTALĂ"}
+\end{center}
+using the secret key $K = \texttt{"SECURITATE"}$ ($|K| = 10 \ge 7$).
+
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Preprocessing:} Spaces are stripped, cedillas converted, and characters cast to uppercase:
+    \begin{center}
+        \texttt{"CRIPTOGRAFIAESTEOȘTIINȚĂFUNDAMENTALĂ"}
+    \end{center}
+    yielding $N = 36$ letters.
+    \item \textbf{Key Expansion:} The 10-character key \texttt{"SECURITATE"} is repeated across $N = 36$:
+    \begin{center}
+        \texttt{"SECURITATESECURITATESECURITATESECURI"}
+    \end{center}
+    \item \textbf{Step-by-Step Transformation (First 18 Characters):}
+    Table~\ref{tab:exec_table} illustrates the 6-row mathematical calculation generated by the system.
+\end{enumerate}
+
+\begin{table}[H]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3.2pt}
+\caption{Task 3.2: Step-by-step Vigenère encryption calculation matrix (First 18 letters).}
+\label{tab:exec_table}
+\begin{tabular}{lcccccccccccccccccc}
+\toprule
+\textbf{Plaintext $M$} & C & R & I & P & T & O & G & R & A & F & I & A & E & S & T & E & O & Ș \\
+\textbf{Key $K$}       & S & E & C & U & R & I & T & A & T & E & S & E & C & U & R & I & T & A \\
+\midrule
+\textbf{Code $M$}      & 4 & 20 & 10 & 18 & 23 & 17 & 8 & 20 & 0 & 7 & 10 & 0 & 6 & 21 & 23 & 6 & 17 & 22 \\
+\textbf{Code $K$}      & 21 & 6 & 4 & 25 & 20 & 10 & 23 & 0 & 23 & 6 & 21 & 6 & 4 & 25 & 20 & 10 & 23 & 0 \\
+\midrule
+\textbf{$M+K \bmod 31$}& 25 & 26 & 14 & 12 & 12 & 27 & 0 & 20 & 23 & 13 & 0 & 6 & 10 & 15 & 12 & 16 & 9 & 22 \\
+\textbf{Ciphertext $C$}& U & V & L & J & J & W & A & R & T & K & A & E & I & M & J & N & H & Ș \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent
+The complete ciphertext produced for the full 36-letter plaintext is:
+\begin{center}
+    \texttt{\textbf{UVLJJWARTKAEIMJNHȘMNAȘXVWCGDTSWȘWUBÎ}}
+\end{center}
+
+\subsection{Task 3.2: Round-Trip Decryption Verification}
+
+Applying the decryption procedure with the same key $K = \texttt{"SECURITATE"}$ to the generated ciphertext restores the plaintext message. Table~\ref{tab:dec_table} details the inverse arithmetic calculation.
+
+\begin{table}[H]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3.2pt}
+\caption{Task 3.2: Step-by-step Vigenère decryption calculation matrix (First 18 letters).}
+\label{tab:dec_table}
+\begin{tabular}{lcccccccccccccccccc}
+\toprule
+\textbf{Ciphertext $C$}& U & V & L & J & J & W & A & R & T & K & A & E & I & M & J & N & H & Ș \\
+\textbf{Key $K$}       & S & E & C & U & R & I & T & A & T & E & S & E & C & U & R & I & T & A \\
+\midrule
+\textbf{Code $C$}      & 25 & 26 & 14 & 12 & 12 & 27 & 0 & 20 & 23 & 13 & 0 & 6 & 10 & 15 & 12 & 16 & 9 & 22 \\
+\textbf{Code $K$}      & 21 & 6 & 4 & 25 & 20 & 10 & 23 & 0 & 23 & 6 & 21 & 6 & 4 & 25 & 20 & 10 & 23 & 0 \\
+\midrule
+\textbf{$C-K \bmod 31$}& 4 & 20 & 10 & 18 & 23 & 17 & 8 & 20 & 0 & 7 & 10 & 0 & 6 & 21 & 23 & 6 & 17 & 22 \\
+\textbf{Plaintext $M$} & C & R & I & P & T & O & G & R & A & F & I & A & E & S & T & E & O & Ș \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent
+The final decrypted text is identical to the original preprocessed message:
+\begin{center}
+    \texttt{\textbf{CRIPTOGRAFIAESTEOȘTIINȚĂFUNDAMENTALĂ}}
+\end{center}
+confirming complete algebraic round-trip fidelity.
+
+\subsection{Task 3.2: Error Handling and Input Validation}
+
+The implementation strictly validates user input and displays informative diagnostics before prompting again:
+\begin{itemize}[noitemsep, topsep=2pt]
+    \item \textbf{Short Key Enforcement ($|K| < 7$):} Entering key \texttt{"PAROLA"} (length 6) is rejected with:
+\begin{lstlisting}[style=bash]
+Error: Key length must be at least 7 characters (got 6: 'PAROLA').
+\end{lstlisting}
+    \item \textbf{Illegal Character Rejection:} Entering \texttt{"Salut 123!"} isolates characters \texttt{'!'}, \texttt{'1'}, \texttt{'2'}, \texttt{'3'} and indicates the permitted Romanian alphabet range:
+\begin{lstlisting}[style=bash]
+Error: Invalid character(s) detected: '!', '1', '2', '3'.
+Allowed characters: Only Romanian alphabet letters ('A'-'Z', 'a'-'z', including Ă, Â, Î, Ș, Ț).
+\end{lstlisting}
+    \item \textbf{Cedilla Normalization:} Entering legacy cedilla variants (e.g., \texttt{"\c{S}TIIN\c{T}\u{A}"}) automatically normalizes characters to comma-below letters (\texttt{"ȘTIINȚĂ"}), mapping to correct indices: $22, 23, 10, 10, 16, 24, 1$.
+    \item \textbf{Whitespace Stripping:} Interspersed spaces in \texttt{"C R I P T O"} are automatically stripped before processing, fulfilling the explicit Task 3.2 requirement.
+\end{itemize}
+
+\subsection{Interactive CLI Application}
+
+Executing \texttt{python3 main.py} greets the user with an interactive terminal interface designed consistently with the laboratory layout:
+
+\begin{lstlisting}[style=bash]
+============================================================
+ LABORATORY WORK NO. 3: VIGENÈRE CIPHER IMPLEMENTATION 
+ Course: Cryptography & Security | UTM FCIM FAF-243 
+ Author: Șoimu Ionuț | Supervisor: Zaica Maia 
+============================================================
+  1. Task 3.2: Vigenère Cipher over Romanian Alphabet
+  2. Exit
+============================================================
+Enter choice (1-2): 1
+
+--- TASK 3.2: VIGENÈRE CIPHER (ROMANIAN ALPHABET) ---
+1. Encrypt plaintext
+2. Decrypt ciphertext
+3. Display Romanian alphabet table (31 letters, indices 0..30)
+4. Return to main menu
+-----------------------------------------------------
+\end{lstlisting}
+
+% ==============================================================================
+\section{Conclusions}
+\markboth{5\quad Conclusions}{5\quad Conclusions}
+
+Through this laboratory work, I implemented the polyalphabetic Vigenère cipher adapted to the 31-letter Romanian alphabet, fulfilling all requirements of Task 3.2.
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Polyalphabetic Substitution Mechanics:} Unlike the single-key and permuted Caesar ciphers where each letter has a fixed image, the Vigenère cipher alternates across multiple Caesar shifts determined by the key string. This ensures that the same plaintext letter maps to different ciphertext symbols across the message, effectively flattening the frequency distribution.
+    \item \textbf{Mathematical Model over $\mathbb{Z}_{31}$:} Restricting the domain to the 31-letter Romanian alphabet required establishing custom bijective mappings between letters and indices $0 \dots 30$, avoiding language-dependent ASCII offsets. Modular addition and subtraction accurately implement encryption ($c_i = (m_i + k'_i) \bmod 31$) and decryption ($m_i = (c_i - k'_i) \bmod 31$).
+    \item \textbf{Input Preprocessing and Validation:} The system rigorously enforces the Task 3.2 requirements by removing whitespace before capitalization, validating character ranges, rejecting illegal characters with informative feedback, and normalizing legacy cedilla letters (\texttt{Ş}, \texttt{Ţ}) to standard comma-below characters (\texttt{Ș}, \texttt{Ț}).
+    \item \textbf{Interactive Workflow and Step-by-Step Transparency:} The interactive CLI provides clear prompts, re-prompting on invalid input, and generates full 6-row mathematical tables displaying numeric indices and modular arithmetic results for every character.
+\end{itemize}
+
+In conclusion, this laboratory demonstrated the practical implementation of polyalphabetic substitution for non-English alphabets, confirming full compliance with the mathematical and functional requirements of Task 3.2.
+
+% ==============================================================================
+\section{Source Code Repository}
+\markboth{6\quad Source Code Repository}{6\quad Source Code Repository}
+
+The complete source code and report build files are organized in the project repository:
+
+\begin{center}
+    \textbf{GitHub Repository Link:}\\
+    \url{https://github.com/Lucariowu/cslabs/tree/main/lab3}
+\end{center}
+
+\end{document}
